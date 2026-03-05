@@ -17,9 +17,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -32,6 +35,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,6 +58,15 @@ fun TaskListScreen(
     onAddTask: () -> Unit
 ) {
     val tasks by viewModel.tasks.collectAsState()
+    var selectedFilter by remember { mutableStateOf<State?>(null) }
+    var showFilterMenu by remember { mutableStateOf(false) }
+
+    // Filtrer les tâches selon l'état sélectionné
+    val filteredTasks = if (selectedFilter != null) {
+        tasks.filter { it.state == selectedFilter }
+    } else {
+        tasks
+    }
 
     Scaffold(
         topBar = {
@@ -59,16 +74,48 @@ fun TaskListScreen(
                 title = { Text("📋 Mes Tâches", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                ),
+                actions = {
+                    Box {
+                        IconButton(onClick = { showFilterMenu = !showFilterMenu }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filtrer")
+                        }
+                        DropdownMenu(
+                            expanded = showFilterMenu,
+                            onDismissRequest = { showFilterMenu = false }
+                        ) {
+
+                            DropdownMenuItem(
+                                text = { Text("Toutes les tâches") },
+                                onClick = {
+                                    selectedFilter = null
+                                    showFilterMenu = false
+                                }
+                            )
+
+                            State.entries.forEach { state ->
+                                DropdownMenuItem(
+                                    text = { Text(getStateLabel(state)) },
+                                    onClick = {
+                                        selectedFilter = state
+                                        showFilterMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             )
         },
+        // bouton d'ajout flottant
         floatingActionButton = {
             FloatingActionButton(onClick = onAddTask) {
                 Icon(Icons.Default.Add, contentDescription = "Ajouter une tâche")
             }
         }
+
     ) { padding ->
-        if (tasks.isEmpty()) {
+        if (filteredTasks.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -89,7 +136,7 @@ fun TaskListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(tasks, key = { it.id }) { task ->
+                items(filteredTasks, key = { it.id }) { task ->
                     TaskCard(
                         task = task,
                         onEdit = { onEditTask(task.id) },
@@ -198,6 +245,14 @@ fun StateChip(state: State) {
     }
     Badge(containerColor = color) {
         Text(text = label, color = Color.White, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+fun getStateLabel(state: State): String {
+    return when (state) {
+        State.Todo -> "À faire"
+        State.Overdue -> "En retard"
+        State.Done -> "Terminée"
     }
 }
 
