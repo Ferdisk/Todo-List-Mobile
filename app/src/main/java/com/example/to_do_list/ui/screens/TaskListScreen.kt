@@ -17,26 +17,28 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +50,13 @@ import androidx.compose.ui.unit.dp
 import com.example.to_do_list.model.Priority
 import com.example.to_do_list.model.State
 import com.example.to_do_list.model.Task
+import com.example.to_do_list.ui.components.TaskFilterMenu
+import com.example.to_do_list.utils.TaskFilter
 import com.example.to_do_list.viewmodel.TaskViewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,13 +67,16 @@ fun TaskListScreen(
 ) {
     val tasks by viewModel.tasks.collectAsState()
     var selectedFilter by remember { mutableStateOf<State?>(null) }
-    var showFilterMenu by remember { mutableStateOf(false) }
+    val filteredTasks = TaskFilter.filterByState(tasks, selectedFilter)
 
-    // Filtrer les tâches selon l'état sélectionné
-    val filteredTasks = if (selectedFilter != null) {
-        tasks.filter { it.state == selectedFilter }
-    } else {
-        tasks
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Observer les tâches qui passent en retard → Snackbar en haut
+    LaunchedEffect(Unit) {
+        viewModel.overdueEvent.collect { taskTitle ->
+            snackbarHostState.showSnackbar("⚠️ \"$taskTitle\" est en retard !")
+        }
     }
 
     Scaffold(
@@ -76,41 +87,25 @@ fun TaskListScreen(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 actions = {
-                    Box {
-                        IconButton(onClick = { showFilterMenu = !showFilterMenu }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filtrer")
-                        }
-                        DropdownMenu(
-                            expanded = showFilterMenu,
-                            onDismissRequest = { showFilterMenu = false }
-                        ) {
-
-                            DropdownMenuItem(
-                                text = { Text("Toutes les tâches") },
-                                onClick = {
-                                    selectedFilter = null
-                                    showFilterMenu = false
-                                }
-                            )
-
-                            State.entries.forEach { state ->
-                                DropdownMenuItem(
-                                    text = { Text(getStateLabel(state)) },
-                                    onClick = {
-                                        selectedFilter = state
-                                        showFilterMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    TaskFilterMenu(
+                        selectedFilter = selectedFilter,
+                        onFilterChange = { selectedFilter = it }
+                    )
                 }
             )
         },
-        // bouton d'ajout flottant
         floatingActionButton = {
             FloatingActionButton(onClick = onAddTask) {
                 Icon(Icons.Default.Add, contentDescription = "Ajouter une tâche")
+            }
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = Color(0xFFB71C1C),
+                    contentColor = Color.White
+                )
             }
         }
 
@@ -210,6 +205,40 @@ fun TaskCard(
                 }
                 Spacer(Modifier.height(4.dp))
                 StateChip(state = task.state)
+
+                // Affichage date limite + heure limite
+                if (task.dateLimit != null || task.hourLimit != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (task.dateLimit != null) {
+                            val dateText = SimpleDateFormat("dd/MM/yyyy", Locale.FRANCE)
+                                .format(Date(task.dateLimit))
+                            Text(
+                                text = "📅 $dateText",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        if (task.hourLimit != null) {
+                            val cal = Calendar.getInstance().apply { timeInMillis = task.hourLimit }
+                            val timeText = String.format(
+                                Locale.FRANCE, "%02d:%02d",
+                                cal.get(Calendar.HOUR_OF_DAY),
+                                cal.get(Calendar.MINUTE)
+                            )
+                            Text(
+                                text = "🕒 $timeText",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
             }
 
             // Actions
@@ -245,14 +274,6 @@ fun StateChip(state: State) {
     }
     Badge(containerColor = color) {
         Text(text = label, color = Color.White, style = MaterialTheme.typography.labelSmall)
-    }
-}
-
-fun getStateLabel(state: State): String {
-    return when (state) {
-        State.Todo -> "À faire"
-        State.Overdue -> "En retard"
-        State.Done -> "Terminée"
     }
 }
 
