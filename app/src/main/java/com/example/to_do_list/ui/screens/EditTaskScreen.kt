@@ -1,6 +1,7 @@
 package com.example.to_do_list.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,9 +41,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.example.to_do_list.model.Periodicity
 import com.example.to_do_list.model.Priority
 import com.example.to_do_list.model.State
+import com.example.to_do_list.ui.components.ConfettiEffect
 import com.example.to_do_list.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +56,7 @@ fun EditTaskScreen(
     onNavigateBack: () -> Unit
 ) {
     val state by viewModel.editState.collectAsState()
+    var showConfetti by remember { mutableStateOf(false) }
 
     // Chargement de la tâche au lancement de l'écran
     LaunchedEffect(taskId) {
@@ -67,125 +71,136 @@ fun EditTaskScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Modifier la tâche", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // ─── Titre ───────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = state.title,
-                onValueChange = viewModel::onTitleChange,
-                label = { Text("Titre *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            // ─── Description ─────────────────────────────────────────────────
-            OutlinedTextField(
-                value = state.description,
-                onValueChange = viewModel::onDescriptionChange,
-                label = { Text("Description") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5
-            )
-
-            // ─── Priorité ────────────────────────────────────────────────────
-            EnumDropdown(
-                label = "Priorité",
-                options = Priority.entries,
-                selected = state.priority,
-                displayName = { it.name },
-                onSelect = viewModel::onPriorityChange
-            )
-
-            // ─── Périodicité ──────────────────────────────────────────────────
-            EnumDropdown(
-                label = "Périodicité",
-                options = Periodicity.entries,
-                selected = state.periodicity,
-                displayName = {
-                    when (it) {
-                        Periodicity.None -> "Aucune"
-                        Periodicity.Daily -> "Quotidienne"
-                        Periodicity.Weekly -> "Hebdomadaire"
-                        Periodicity.Monthly -> "Mensuelle"
-                    }
-                },
-                onSelect = viewModel::onPeriodicityChange
-            )
-
-            // ─── État actuel (lecture seule si Done) ─────────────────────────
-            if (state.state != State.Done) {
-                EnumDropdown(
-                    label = "État",
-                    options = State.entries.filter { it != State.Done },
-                    selected = state.state,
-                    displayName = {
-                        when (it) {
-                            State.Todo -> "À faire"
-                            State.Overdue -> "En retard"
-                            State.Done -> "Terminée"
+    Box {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Modifier la tâche", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour")
                         }
                     },
-                    onSelect = viewModel::onStateChange
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 )
             }
-
-            Spacer(Modifier.height(8.dp))
-
-            // ─── Bouton Sauvegarder ───────────────────────────────────────────
-            FilledTonalButton(
-                onClick = viewModel::saveEditedTask,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = state.title.isNotBlank()
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Sauvegarder les modifications")
-            }
-
-            // ─── Bouton Terminer la tâche ────────────────────────────────────
-            if (state.state != State.Done) {
-                Button(
-                    onClick = viewModel::markTaskAsDone,
+                // ─── Titre ───────────────────────────────────────────────────────
+                OutlinedTextField(
+                    value = state.title,
+                    onValueChange = viewModel::onTitleChange,
+                    label = { Text("Titre *") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF43A047)
-                    ),
+                    singleLine = true
+                )
+
+                // ─── Description ─────────────────────────────────────────────────
+                OutlinedTextField(
+                    value = state.description,
+                    onValueChange = viewModel::onDescriptionChange,
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
+                )
+
+                // ─── Priorité ────────────────────────────────────────────────────
+                EnumDropdown(
+                    label = "Priorité",
+                    options = Priority.entries,
+                    selected = state.priority,
+                    displayName = { it.name },
+                    onSelect = viewModel::onPriorityChange
+                )
+
+                // ─── Périodicité ──────────────────────────────────────────────────
+                EnumDropdown(
+                    label = "Périodicité",
+                    options = Periodicity.entries,
+                    selected = state.periodicity,
+                    displayName = {
+                        when (it) {
+                            Periodicity.None -> "Aucune"
+                            Periodicity.Daily -> "Quotidienne"
+                            Periodicity.Weekly -> "Hebdomadaire"
+                            Periodicity.Monthly -> "Mensuelle"
+                        }
+                    },
+                    onSelect = viewModel::onPeriodicityChange
+                )
+
+
+                if (state.state != State.Done) {
+                    EnumDropdown(
+                        label = "État",
+                        options = State.entries.filter { it != State.Done },
+                        selected = state.state,
+                        displayName = {
+                            when (it) {
+                                State.Todo -> "À faire"
+                                State.Overdue -> "En retard"
+                                State.Done -> "Terminée"
+                            }
+                        },
+                        onSelect = viewModel::onStateChange
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+
+                FilledTonalButton(
+                    onClick = viewModel::saveEditedTask,
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = state.title.isNotBlank()
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null)
-                        Text("Terminer la tâche", fontWeight = FontWeight.Bold)
-                    }
+                    Text("Sauvegarder les modifications")
                 }
-            } else {
-                Text(
-                    text = "✅ Cette tâche est déjà terminée.",
-                    color = Color(0xFF43A047),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+
+
+                if (state.state != State.Done) {
+                    Button(
+                        onClick = {
+                            showConfetti = true
+                            viewModel.markTaskAsDone()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF43A047)
+                        ),
+                        enabled = state.title.isNotBlank()
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null)
+                            Text("Terminer la tâche", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "✅ Cette tâche est déjà terminée.",
+                        color = Color(0xFF43A047),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
             }
         }
+
+
+        ConfettiEffect(
+            active = showConfetti,
+            modifier = Modifier.zIndex(10f)
+        )
     }
 }
 
@@ -231,4 +246,3 @@ fun <T> EnumDropdown(
         }
     }
 }
-
