@@ -163,7 +163,7 @@ class TaskViewModel @Inject constructor(
             photoPath = s.photoPath
         )
         viewModelScope.launch {
-            repository.updateTask(task)
+            repository.markTaskAsDone(task)
             _editState.update { it.copy(state = State.Done, isSaved = true) }
         }
     }
@@ -204,4 +204,3 @@ class TaskViewModel @Inject constructor(
         }
     }
 }
-
