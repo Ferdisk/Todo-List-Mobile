@@ -16,7 +16,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,6 +32,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -68,15 +71,38 @@ fun TaskListScreen(
     val tasks by viewModel.tasks.collectAsState()
     var selectedFilter by remember { mutableStateOf<State?>(null) }
     val filteredTasks = TaskFilter.filterByState(tasks, selectedFilter)
+    var showDeleteDoneDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Observer les tâches qui passent en retard → Snackbar en haut
+    val hasDoneTasks = tasks.any { it.state == State.Done }
+
     LaunchedEffect(Unit) {
         viewModel.overdueEvent.collect { taskTitle ->
             snackbarHostState.showSnackbar("⚠️ \"$taskTitle\" est en retard !")
         }
+    }
+
+    if (showDeleteDoneDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDoneDialog = false },
+            title = { Text("Effacer les tâches effectuées") },
+            text = { Text("Toutes les tâches terminées seront supprimées définitivement.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteCompletedTasks()
+                    showDeleteDoneDialog = false
+                }) {
+                    Text("Effacer", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDoneDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -87,6 +113,15 @@ fun TaskListScreen(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 actions = {
+                    if (hasDoneTasks) {
+                        IconButton(onClick = { showDeleteDoneDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteSweep,
+                                contentDescription = "Effacer les tâches effectuées",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                     TaskFilterMenu(
                         selectedFilter = selectedFilter,
                         onFilterChange = { selectedFilter = it }
@@ -172,7 +207,6 @@ fun TaskCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Indicateur de priorité
             Badge(
                 containerColor = priorityColor,
                 modifier = Modifier.padding(end = 12.dp)
@@ -206,7 +240,6 @@ fun TaskCard(
                 Spacer(Modifier.height(4.dp))
                 StateChip(state = task.state)
 
-                // Affichage date limite + heure limite
                 if (task.dateLimit != null || task.hourLimit != null) {
                     Spacer(Modifier.height(4.dp))
                     Row(
@@ -241,7 +274,6 @@ fun TaskCard(
                 }
             }
 
-            // Actions
             if (isDone) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,

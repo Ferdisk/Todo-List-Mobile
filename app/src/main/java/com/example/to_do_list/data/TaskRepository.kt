@@ -1,6 +1,5 @@
 package com.example.to_do_list.data
 
-import com.example.to_do_list.model.State
 import com.example.to_do_list.model.Task
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -20,8 +19,6 @@ class TaskRepository @Inject constructor(
 
     suspend fun deleteTask(task: Task) = taskDao.deleteTask(task)
 
-    suspend fun markTaskAsDone(task: Task) {
-        taskDao.updateTask(task.copy(state = State.Done))
-    }
+    suspend fun deleteCompletedTasks() = taskDao.deleteCompletedTasks()
 }
 

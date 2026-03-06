@@ -44,11 +44,9 @@ class TaskViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    /** Événement émis quand une tâche passe en retard (pour Snackbar dans l'UI) */
     private val _overdueEvent = MutableSharedFlow<String>()
     val overdueEvent = _overdueEvent.asSharedFlow()
 
-    /** Ticker qui émet toutes les 30 secondes pour forcer la vérification du retard */
     private val ticker = flow {
         while (true) {
             emit(System.currentTimeMillis())
@@ -56,7 +54,6 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    /** Liste de toutes les tâches, avec détection automatique du retard toutes les 30s */
     val tasks: StateFlow<List<Task>> = combine(
         repository.getAllTasksFlow(),
         ticker
@@ -74,18 +71,14 @@ class TaskViewModel @Inject constructor(
                 task
             }
         }
-    }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList()
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
 
-    /** État de l'écran d'édition */
     private val _editState = MutableStateFlow(EditTaskUiState())
     val editState: StateFlow<EditTaskUiState> = _editState.asStateFlow()
-
-    // ─── Chargement d'une tâche dans le formulaire ───────────────────────────
 
     fun loadTask(taskId: Int) {
         viewModelScope.launch {
@@ -111,8 +104,6 @@ class TaskViewModel @Inject constructor(
         _editState.update { EditTaskUiState() }
     }
 
-    // ─── Mise à jour des champs du formulaire ────────────────────────────────
-
     fun onTitleChange(value: String) = _editState.update { it.copy(title = value) }
     fun onDescriptionChange(value: String) = _editState.update { it.copy(description = value) }
     fun onPriorityChange(value: Priority) = _editState.update { it.copy(priority = value) }
@@ -122,13 +113,10 @@ class TaskViewModel @Inject constructor(
     fun onPeriodicityChange(value: Periodicity) = _editState.update { it.copy(periodicity = value) }
     fun onPhotoPathChange(value: String?) = _editState.update { it.copy(photoPath = value) }
 
-    // ─── Actions CRUD ────────────────────────────────────────────────────────
-
     fun addTask(task: Task) {
         viewModelScope.launch { repository.insertTask(task) }
     }
 
-    /** Sauvegarde les modifications du formulaire en base */
     fun saveEditedTask() {
         val s = _editState.value
         val updatedTask = Task(
@@ -148,22 +136,11 @@ class TaskViewModel @Inject constructor(
         }
     }
 
-    /** Met la tâche en état 'Done' et sauvegarde */
     fun markTaskAsDone() {
         val s = _editState.value
-        val task = Task(
-            id = s.id,
-            title = s.title.trim(),
-            description = s.description.trim(),
-            priority = s.priority,
-            state = State.Done,
-            dateLimit = s.dateLimit,
-            hourLimit = s.hourLimit,
-            periodicity = s.periodicity,
-            photoPath = s.photoPath
-        )
         viewModelScope.launch {
-            repository.markTaskAsDone(task)
+            val task = repository.getTaskById(s.id) ?: return@launch
+            repository.updateTask(task.copy(state = State.Done))
             _editState.update { it.copy(state = State.Done, isSaved = true) }
         }
     }
@@ -172,13 +149,13 @@ class TaskViewModel @Inject constructor(
         viewModelScope.launch { repository.deleteTask(task) }
     }
 
-    // ─── Logique de retard ───────────────────────────────────────────────────
+    fun deleteCompletedTasks() {
+        viewModelScope.launch { repository.deleteCompletedTasks() }
+    }
 
     private fun isOverdue(task: Task, now: Long): Boolean {
         val dateLimit = task.dateLimit ?: return false
-
         return if (task.hourLimit != null) {
-            // Combiner la date limite avec l'heure limite
             val dateCal = Calendar.getInstance().apply { timeInMillis = dateLimit }
             val hourCal = Calendar.getInstance().apply { timeInMillis = task.hourLimit }
             val deadline = Calendar.getInstance().apply {
@@ -192,7 +169,6 @@ class TaskViewModel @Inject constructor(
             }
             now > deadline.timeInMillis
         } else {
-            // Pas d'heure → retard à la fin du jour limite
             val dateCal = Calendar.getInstance().apply {
                 timeInMillis = dateLimit
                 set(Calendar.HOUR_OF_DAY, 23)
