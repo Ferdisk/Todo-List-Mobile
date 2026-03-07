@@ -50,10 +50,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.to_do_list.model.Periodicity
 import com.example.to_do_list.model.Priority
 import com.example.to_do_list.model.State
 import com.example.to_do_list.model.Task
 import com.example.to_do_list.ui.components.TaskFilterMenu
+import com.example.to_do_list.utils.SortOption
 import com.example.to_do_list.utils.TaskFilter
 import com.example.to_do_list.viewmodel.TaskViewModel
 import java.text.SimpleDateFormat
@@ -70,7 +72,8 @@ fun TaskListScreen(
 ) {
     val tasks by viewModel.tasks.collectAsState()
     var selectedFilter by remember { mutableStateOf<State?>(null) }
-    val filteredTasks = TaskFilter.filterByState(tasks, selectedFilter)
+    var selectedSort by remember { mutableStateOf(SortOption.None) }
+    val filteredTasks = TaskFilter.sort(TaskFilter.filterByState(tasks, selectedFilter), selectedSort)
     var showDeleteDoneDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -124,7 +127,9 @@ fun TaskListScreen(
                     }
                     TaskFilterMenu(
                         selectedFilter = selectedFilter,
-                        onFilterChange = { selectedFilter = it }
+                        onFilterChange = { selectedFilter = it },
+                        selectedSort = selectedSort,
+                        onSortChange = { selectedSort = it }
                     )
                 }
             )
@@ -211,8 +216,13 @@ fun TaskCard(
                 containerColor = priorityColor,
                 modifier = Modifier.padding(end = 12.dp)
             ) {
+                val priorityLabel = when (task.priority) {
+                    Priority.High -> "⚡ Haute"
+                    Priority.Mid -> "➡ Moyenne"
+                    Priority.Low -> "↓ Basse"
+                }
                 Text(
-                    text = task.priority.name,
+                    text = priorityLabel,
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall
                 )
@@ -239,6 +249,11 @@ fun TaskCard(
                 }
                 Spacer(Modifier.height(4.dp))
                 StateChip(state = task.state)
+
+                if (task.periodicity != Periodicity.None) {
+                    Spacer(Modifier.height(4.dp))
+                    PeriodicityChip(periodicity = task.periodicity)
+                }
 
                 if (task.dateLimit != null || task.hourLimit != null) {
                     Spacer(Modifier.height(4.dp))
@@ -303,6 +318,19 @@ fun StateChip(state: State) {
         State.Todo -> "À faire" to Color(0xFF1E88E5)
         State.Overdue -> "En retard" to Color(0xFFE53935)
         State.Done -> "Terminée" to Color(0xFF43A047)
+    }
+    Badge(containerColor = color) {
+        Text(text = label, color = Color.White, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+fun PeriodicityChip(periodicity: Periodicity) {
+    val (label, color) = when (periodicity) {
+        Periodicity.Daily -> "🔁 Quotidien" to Color(0xFF8E24AA)
+        Periodicity.Weekly -> "🔁 Hebdomadaire" to Color(0xFF5E35B1)
+        Periodicity.Monthly -> "🔁 Mensuel" to Color(0xFF1E88E5)
+        Periodicity.None -> return
     }
     Badge(containerColor = color) {
         Text(text = label, color = Color.White, style = MaterialTheme.typography.labelSmall)
