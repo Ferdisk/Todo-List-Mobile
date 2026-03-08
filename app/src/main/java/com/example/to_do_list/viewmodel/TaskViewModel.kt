@@ -3,6 +3,7 @@ package com.example.to_do_list.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.to_do_list.data.StreakManager
 import com.example.to_do_list.data.TaskRepository
 import com.example.to_do_list.model.Periodicity
 import com.example.to_do_list.model.Priority
@@ -35,17 +36,28 @@ data class EditTaskUiState(
     val hourLimit: Long? = null,
     val periodicity: Periodicity = Periodicity.None,
     val photoPath: String? = null,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val streakCount: Int = 0
 )
 
 @HiltViewModel
 class TaskViewModel @Inject constructor(
     private val repository: TaskRepository,
+    private val streakManager: StreakManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _overdueEvent = MutableSharedFlow<String>()
     val overdueEvent = _overdueEvent.asSharedFlow()
+
+    private val _currentStreak = MutableStateFlow(0)
+    val currentStreak: StateFlow<Int> = _currentStreak.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _currentStreak.value = streakManager.getStreak()
+        }
+    }
 
     private val ticker = flow {
         while (true) {
@@ -141,7 +153,9 @@ class TaskViewModel @Inject constructor(
         viewModelScope.launch {
             val task = repository.getTaskById(s.id) ?: return@launch
             repository.updateTask(task.copy(state = State.Done))
-            _editState.update { it.copy(state = State.Done, isSaved = true) }
+            val newStreak = streakManager.recordCompletion()
+            _currentStreak.value = newStreak
+            _editState.update { it.copy(state = State.Done, isSaved = true, streakCount = newStreak) }
         }
     }
 

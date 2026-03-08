@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -28,6 +29,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -57,18 +59,55 @@ fun EditTaskScreen(
 ) {
     val state by viewModel.editState.collectAsState()
     var showConfetti by remember { mutableStateOf(false) }
+    var showStreakDialog by remember { mutableStateOf(false) }
 
-    // Chargement de la tâche au lancement de l'écran
     LaunchedEffect(taskId) {
         viewModel.loadTask(taskId)
     }
 
-    // Navigation automatique après sauvegarde
     LaunchedEffect(state.isSaved) {
-        if (state.isSaved) {
+        if (state.isSaved && state.streakCount > 0) {
+            showStreakDialog = true
+        } else if (state.isSaved) {
             viewModel.resetEditState()
             onNavigateBack()
         }
+    }
+
+    if (showStreakDialog) {
+        val streak = state.streakCount
+        val emoji = when {
+            streak >= 30 -> "🏆"
+            streak >= 14 -> "🔥"
+            streak >= 7  -> "⚡"
+            streak >= 3  -> "✨"
+            else         -> "🎉"
+        }
+        val message = when {
+            streak >= 30 -> "Incroyable ! $streak jours de suite !"
+            streak >= 14 -> "Tu es en feu ! $streak jours consécutifs !"
+            streak >= 7  -> "Une semaine entière ! Streak : $streak 🎯"
+            streak >= 3  -> "Belle série ! Streak : $streak jours"
+            else         -> "C'est parti ! Streak : $streak jour"
+        }
+        AlertDialog(
+            onDismissRequest = {
+                showStreakDialog = false
+                viewModel.resetEditState()
+                onNavigateBack()
+            },
+            title = { Text("$emoji Tâche terminée !") },
+            text = { Text(message, style = MaterialTheme.typography.bodyLarge) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showStreakDialog = false
+                    viewModel.resetEditState()
+                    onNavigateBack()
+                }) {
+                    Text("Super !")
+                }
+            }
+        )
     }
 
     Box {
@@ -86,7 +125,7 @@ fun EditTaskScreen(
                     )
                 )
             }
-        ) { padding ->
+            ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -95,7 +134,6 @@ fun EditTaskScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // ─── Titre ───────────────────────────────────────────────────────
                 OutlinedTextField(
                     value = state.title,
                     onValueChange = viewModel::onTitleChange,
@@ -104,7 +142,6 @@ fun EditTaskScreen(
                     singleLine = true
                 )
 
-                // ─── Description ─────────────────────────────────────────────────
                 OutlinedTextField(
                     value = state.description,
                     onValueChange = viewModel::onDescriptionChange,
@@ -114,7 +151,6 @@ fun EditTaskScreen(
                     maxLines = 5
                 )
 
-                // ─── Priorité ────────────────────────────────────────────────────
                 EnumDropdown(
                     label = "Priorité",
                     options = Priority.entries,
@@ -123,7 +159,6 @@ fun EditTaskScreen(
                     onSelect = viewModel::onPriorityChange
                 )
 
-                // ─── Périodicité ──────────────────────────────────────────────────
                 EnumDropdown(
                     label = "Périodicité",
                     options = Periodicity.entries,
@@ -172,7 +207,7 @@ fun EditTaskScreen(
                     Button(
                         onClick = {
                             showConfetti = true
-                            viewModel.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     markTaskAsDone()
+                            viewModel.markTaskAsDone()
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(

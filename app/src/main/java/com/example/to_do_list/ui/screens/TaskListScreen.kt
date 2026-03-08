@@ -71,6 +71,7 @@ fun TaskListScreen(
     onAddTask: () -> Unit
 ) {
     val tasks by viewModel.tasks.collectAsState()
+    val currentStreak by viewModel.currentStreak.collectAsState()
     var selectedFilter by remember { mutableStateOf<State?>(null) }
     var selectedSort by remember { mutableStateOf(SortOption.None) }
     val filteredTasks = TaskFilter.sort(TaskFilter.filterByState(tasks, selectedFilter), selectedSort)
@@ -111,7 +112,31 @@ fun TaskListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("📋 Mes Tâches", fontWeight = FontWeight.Bold) },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("📋 Mes Tâches", fontWeight = FontWeight.Bold)
+                        if (currentStreak > 0) {
+                            val streakEmoji = when {
+                                currentStreak >= 30 -> "🏆"
+                                currentStreak >= 14 -> "🔥"
+                                currentStreak >= 7  -> "⚡"
+                                currentStreak >= 3  -> "✨"
+                                else               -> "🎉"
+                            }
+                            Badge(containerColor = Color(0xFFFF6F00)) {
+                                Text(
+                                    "$streakEmoji $currentStreak",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
