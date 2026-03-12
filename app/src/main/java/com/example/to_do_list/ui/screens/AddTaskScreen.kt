@@ -44,6 +44,7 @@ import com.example.to_do_list.model.Periodicity
 import com.example.to_do_list.model.Priority
 import com.example.to_do_list.model.State
 import com.example.to_do_list.model.Task
+import com.example.to_do_list.ui.components.PhotoPickerSection
 import com.example.to_do_list.viewmodel.TaskViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -64,6 +65,7 @@ fun AddTaskScreen(
     var selectedHour by remember { mutableStateOf<Long?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var photoPath by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -167,6 +169,13 @@ fun AddTaskScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            PhotoPickerSection(
+                photoPath = photoPath,
+                onPhotoSelected = { photoPath = it }
+            )
+
+            Spacer(Modifier.height(8.dp))
+
             Button(
                 onClick = {
                     viewModel.addTask(
@@ -177,7 +186,8 @@ fun AddTaskScreen(
                             state = State.Todo,
                             periodicity = periodicity,
                             dateLimit = selectedDate,
-                            hourLimit = selectedHour
+                            hourLimit = selectedHour,
+                            photoPath = photoPath
                         )
                     )
                     onNavigateBack()

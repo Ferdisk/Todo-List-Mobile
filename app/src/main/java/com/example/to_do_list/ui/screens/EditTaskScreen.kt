@@ -48,6 +48,7 @@ import com.example.to_do_list.model.Periodicity
 import com.example.to_do_list.model.Priority
 import com.example.to_do_list.model.State
 import com.example.to_do_list.ui.components.ConfettiEffect
+import com.example.to_do_list.ui.components.PhotoPickerSection
 import com.example.to_do_list.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,6 +191,13 @@ fun EditTaskScreen(
                         onSelect = viewModel::onStateChange
                     )
                 }
+
+                Spacer(Modifier.height(8.dp))
+
+                PhotoPickerSection(
+                    photoPath = state.photoPath,
+                    onPhotoSelected = viewModel::onPhotoPathChange
+                )
 
                 Spacer(Modifier.height(8.dp))
 
